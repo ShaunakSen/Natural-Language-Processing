@@ -1,3 +1,5 @@
+### Import libraries
+
 import enum
 import nltk
 from nltk.corpus.reader import lin
@@ -11,6 +13,8 @@ import plotly.express as px
 import spacy
 nlp = spacy.load("en_core_web_sm")
 
+
+### global variable for file path location of the transcript.txt file
 fpath = 'C:\\Users\\shaun\\Documents\\my_projects\\Natural Language Processing\\Advanced NLP with spaCy course'
 
 
@@ -23,16 +27,14 @@ def read_file():
     txt_file.close()
 
     return text
-    # print (text)
-
-    all_words = nltk.tokenize.word_tokenize(text)
-
-    ### some words like 
 
 
-def normalize_text(text, steps = ['tokenize', 'whitespace_removal', 'case_normal', 'hyphen_handling', 'punc_removal', 'stem']):
+
+def normalize_text(text):
   """
-  normalize the text according to the pipeline specified
+  normalize the text: tokenize -> whitespace_removal -> case norm -> hyphen handling -> punc removal -> stopwords removal (oprtional)
+  returns: punc_removed: steps applied: 'tokenize', 'whitespace_removal', 'case_normal', 'hyphen_handling', 'punc_removal'
+           stopwords_removed: steps applied: 'tokenize', 'whitespace_removal', 'case_normal', 'hyphen_handling', 'punc_removal', 'stopwords_removed'
   """
   all_words = nltk.tokenize.word_tokenize(text)
 
@@ -43,39 +45,41 @@ def normalize_text(text, steps = ['tokenize', 'whitespace_removal', 'case_normal
   ### Also normalixe words like 'A'
   all_words_lower = [word if word.isupper() and len(word)>1 else word.lower() for word in all_words]
 
-  ### some words like  'burgundy-', 'leather' are broken into different words, but ideally they are the same word
+  ### if there are words like 'Neo' we only want the uppercase versions 
+  all_words_case_norm = [word_.upper() if  word_.lower() == 'morpheus' or word_.lower() == 'neo' else word_ for word_ in all_words_lower]
+
+
+  ### some words like  'burgundy-', 'leather' are broken into different words, but ideally they are the same word: the following code block corrects that
+  ### store the results in words_hyphen_corrected
   words_hyphen_corrected = []
   idx_to_ignore = -1
-  for idx, word in enumerate(all_words_lower):
+  for idx, word in enumerate(all_words_case_norm):
     if idx == idx_to_ignore:
       continue
     if word.endswith('-') and len(word)>1:
-      next_word = all_words_lower[idx+1]
+      next_word = all_words_case_norm[idx+1]
       joined_word = word + next_word
       idx_to_ignore = idx+1
-      print ('Adding:', joined_word)
       words_hyphen_corrected.append(joined_word)
     else:
       words_hyphen_corrected.append(word)
 
-
+  ### replace punctuations by whitespace
   punc_removed = [re.sub(r'[^\w\d]', ' ', word) if len(word)==1 else word for word in words_hyphen_corrected]
 
-
+  ### remove stopwords: uses the nltk bulti-in stopwords list
   stop_words = set(stopwords.words('english'))
   stopwords_removed = [w for w in punc_removed if not w in stop_words]
-
 
   ### stemming: while analyzing frequency it will be useful, for example (laughing, laugh, laughed) are all forms of 'laugh' and counted together 
   # porter = PorterStemmer()
   # stemmed_words = [porter.stem(word) for word in stopwords_removed]
 
-  # print (stemmed_words)
 
   return punc_removed, stopwords_removed
 
 
-def analyze_frequency(punc_removed, stopwords_removed, remove_stopwords=True, cutoff_freq=1):
+def analyze_frequency(punc_removed, stopwords_removed, remove_stopwords=True, cutoff_freq=1, write_to_csv='False'):
   """
   Now that we have normalized the text we can analyze the frequecy of the words
   Produces a bar chart using the following params
@@ -83,12 +87,14 @@ def analyze_frequency(punc_removed, stopwords_removed, remove_stopwords=True, cu
   stopwords_removed: words with both stopwords and punctuations removed
   remove_stopwords: whether to keep or remove stopwords in the analysis
   cutoff_freq: min freq to consider, for example if cutoff_freq=1, consider all words which occur more than 1 time
+  write_to_csv: whether to write the generated frequency table to a local csv file with same location as that of transcript.txt
   """
 
   if remove_stopwords:
     words_list = stopwords_removed
   else:
     words_list = punc_removed
+    
 
   freq_dict = {}
   for word in words_list:
@@ -105,8 +111,13 @@ def analyze_frequency(punc_removed, stopwords_removed, remove_stopwords=True, cu
 
   df = df.query('frequency > @cutoff_freq')
 
-  fig = px.bar(df, x='word', y='frequency', title=f'Top words with freq cutoff: {cutoff_freq} | Stopwords present: {remove_stopwords}')
+  fig = px.bar(df, x='word', y='frequency', title=f'Top words with freq cutoff: {cutoff_freq} | Stopwords present: {not remove_stopwords}')
   fig.show()
+
+  if write_to_csv:
+    df.to_csv(f'{fpath}\\freq_table.csv', index=False)
+
+  return
 
 def extract_names():
   """
@@ -134,8 +145,12 @@ def extract_names():
   return all_extracted_names
 
 def extract_names_all(names):
-  all_extracted_names = []
-  all_texts = dict.fromkeys(names, [])
+  
+  """
+  Runs spacy NER on the text to extract entitites with type='PERSON'
+  Takes the names extracted from the previous step and appends to that
+  Returns the modified list
+  """
 
 
   with open(f'{fpath}\\transcript.txt', 'r') as txt_file:
@@ -148,12 +163,15 @@ def extract_names_all(names):
     for ent in doc.ents:
       if ent.label_ == 'PERSON'  and ent.text.strip() != '' and ent.text.strip() not in names:
         names.append(ent.text.strip())
-    print (names)
     return names
+
+
 def main():
 
   ### Step1 : read the file
   text = read_file()
+
+  ### normalize text: 
   punc_removed, stopwords_removed = normalize_text(text)
 
 
@@ -167,27 +185,13 @@ def main():
     if not word.startswith('\''):
       punc_removed_clean.append(word)
 
-  # analyze_frequency(punc_removed, stopwords_removed_clean, True, 2)
+  analyze_frequency(punc_removed, stopwords_removed_clean, True, 2, False)
 
-  all_extracted_names = extract_names()
+  extracted_names = extract_names()
+
+  all_extracted_names = extract_names_all(extracted_names)
+
   print (all_extracted_names)
-
-  extract_names_all(all_extracted_names)
 
 main()
 
-
-"""
-WordCloud: https://github.com/amueller/word_cloud
-
-CountVectorizer, TFIDF, Word2vec
-
-each word -> feature
-each row: speech by MORPHEUS or NEO
-other simple features like num_stopwords, sentiment 
-Train supervised models
-
-doc2vec: Speaker A -> doc -> vec
-new speech -> embed -> compute dist -> whichever is lesser
-
-"""
