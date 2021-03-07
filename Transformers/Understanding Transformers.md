@@ -507,7 +507,9 @@ Where w31 = x3 . x1
 
 w32 = x3. x2 ... and so on...
 
-y3 = (x3 . x1). x1 + (x3. x2) . x2 +(x3. x3) . x3 + (x3. x4) . x4
+y3 = (x3 . x1). **x1** + (x3. x2) . **x2** +(x3. x3) . **x3** + (x3. x4) . **x4**
+
+`underline: query, regular: key, bold: value`
 
 Now we basically consider x3 as the query, which is matched against the ips : x1 →x4
 
@@ -531,3 +533,46 @@ Some notes
 - A mixture of all values is returned
 - This is basically how the nw can learn associations bw diff parts of the text while generating each op
 - In self attention, keys, queries and values are all from the same set, i.e all derived from the ip embeddings and that is why we call it "self"; also a query at a time for y3 is x3 so again "self"
+
+### Modifications to self attention
+
+### 1. Key, Query and Value Transformations
+
+![https://i.imgur.com/Nqynm9y.png](https://i.imgur.com/Nqynm9y.png)
+
+Even though we are using the same query vector for querying all keys for generating the corresponding op, these can behave differently using these transformations. Basically in self attention the same input vectors serve as key, query and values. But using these transformations, they can behave differently when they take on each of these 3 roles 
+
+We use linear transformations for these. 
+
+For every role (key, query and value) we use a separate weight matrix and bias. So now an input vector can behave differently as a key than as a value or as a query. This adds more diversity
+
+And using these matrices, bias and the input vectors we compute the key, query and values (k_i, q_i, v_i)
+
+### 2. Multi-head attention
+
+![https://i.imgur.com/locrErO.png](https://i.imgur.com/locrErO.png)
+
+The necessity of MHA derives from the idea that diff words relate to each other by diff relations. 
+
+Here the word terrible relates to the words not and too in that they kind of neglect and change the ,meaning of the word terrible
+
+But the relation bw the word terrible and restaurant is completely diff
+
+To allow the nw to model one kind of relation in one self attention layer is feasible but for different relations we will need different self attention layers, same inputs and architecture, but added in parallel to the first layer
+
+Basically we split the self attention into diff heads
+
+1. Start with an input seq
+2. Pass this seq through some linear operations to decrease its dimensionality
+3. Here we consider a 2-head self attention. W1 and W2 are the transformations
+
+    ![https://i.imgur.com/Je8y8HE.png](https://i.imgur.com/Je8y8HE.png)
+
+4. Each of these reduced dimensional inputs are fed to 2 separate self attentions in parallel
+5. Each of the self attention layers have their own K,Q and V transforms. 
+6. We get 2 sets of seq vectors out.
+7. We concatenate them and pass through a final op transformation (WO) to give us the op seq
+
+    ![https://i.imgur.com/HGTMOLh.png](https://i.imgur.com/HGTMOLh.png)
+
+---
