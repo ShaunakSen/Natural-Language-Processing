@@ -4,6 +4,8 @@
 
 Seq2seq and basic attention: Andrew ng+ jay alamar + [https://lena-voita.github.io/nlp_course/seq2seq_and_attention.html](https://lena-voita.github.io/nlp_course/seq2seq_and_attention.html)
 
+[https://www.youtube.com/watch?v=zHY6WiTtGWQ](https://www.youtube.com/watch?v=zHY6WiTtGWQ)
+
 Attention for transformer: Waterloo + jay alamar
 
 Transformer: yannik + jay alamar
@@ -434,7 +436,7 @@ This process can be easily vectorized as shown below:
 Couple of things to note here: 
 
 1. The weight from an input vector at one position to the same position will be the highest (w_i,i from x_i to y_i will be the highest)
-    1. Essentially what this means is that this simple self attention is keeping every input vector the same but mixing in a little bit of the values of the other ip vectors
+    1. Essentially what this means is that this simple self attention is keeping every input vector the same but *mixing in a little bit of the values of the other ip vectors*
     2. We can change this behavior later
 2. Simple self attention has no parameters that we can tune, we cannot easily tune the behavior. The behavior is entirely driven by the mechanism that generates these input vectors as the weights are nothing but dot products of these input vectors. For example if we take an embedding layer as ip and stick a self-attention layer on top of it, then the embedding layer will **entirely** drive the behavior of the model
 3. Whole self attention is just a matrix multiplication of W by X resulting in Y; W is derived from X
@@ -464,3 +466,68 @@ We collect feature vectors for the users and movies and we can simply take the d
 - If we cannot build these hand-crafted feature vectors, we can always use embedding vectors, as we know that embedding vectors encode useful features
 
 Lets explore how we use this in Attention
+
+Lets setup a simple sentiment analysis problem where we want to predict a sentiment score based on a review
+
+![https://i.imgur.com/vwHgH9l.png](https://i.imgur.com/vwHgH9l.png)
+
+The embedding layer transforms the input words → input vectors
+
+We have a simple self-attention layer which takes in the embedding vectors and creates an output sequence
+
+The output sequence vectors are summed together to give us a single vector for us to perform the classification (we have to predict whether or not the review is +ve or -ve)
+
+If we did not have the  self attention layer in this model, we would have a model where each ip word could contribute to the op independently of the other words (like a bag-of-words mdoel) and the word "terrible" would probably lead to a -ve sentiment, which would be wrong. Here the meaning of the word "terrible" is kind of inverted by the presence of the word "not". This is where self-attention helps. So we would hope that the model learns that the interaction bw the words "not" and "terrible" is important for the correct result
+
+ What we imagine the model should learn:
+
+![https://i.imgur.com/bi7sdkR.png](https://i.imgur.com/bi7sdkR.png)
+
+When we are determining the op seq for the word "terrible i.e. y_terrible, we would hope that the embedding vector for the word "not" is learned in such a way that it has a low dot product with the embedding vector for the word "terrible". So if the 2 occur together, we can lower the probability that terrible contributes negatively to the score as "not" kind of inverts the meaning of the word "terrible". With one simple self attention layer this might not work as expected, but we will add some modifications later
+
+### Features to add to simple self attention
+
+### 1. Scaled self attention
+
+![https://i.imgur.com/5HHgdw7.png](https://i.imgur.com/5HHgdw7.png)
+
+As the dimensionality of the ip vectors grow, so does the avg size of the dot prod. And that growth is by a fator of sqrt(k) where k is the input dimension. We normalize the dot product which keeps the wts in a certain range. As these wts ate then passed to the softmax this helps in avoiding vanishing gradients in the softmax operation
+
+### 2. Keys, Queries and Values
+
+![https://i.imgur.com/Db5Ezxo.png](https://i.imgur.com/Db5Ezxo.png)
+
+![https://i.imgur.com/xz9aTWO.png](https://i.imgur.com/xz9aTWO.png)
+
+Suppose we are talking computing op y3
+
+y3 = w31 . x1 + w32 . x2 + w33 . x3 + w34 . x4
+
+Where w31 = x3 . x1
+
+w32 = x3. x2 ... and so on...
+
+y3 = (x3 . x1). x1 + (x3. x2) . x2 +(x3. x3) . x3 + (x3. x4) . x4
+
+Now we basically consider x3 as the query, which is matched against the ips : x1 →x4
+
+We can imagine like in the prev example that x3 is an encoding which encodes specific features, so if x3 is the encoding for the word "kingdom" it may contain feature info like ["male", "royalty", "people", "ruling", ...]. Imagine a query like 
+
+How important is the features set: ["male", "royalty", "people", "ruling", ...] interaction with every other input word important for predicting y3
+
+Now when we use this query to compute the dot prod against say x1, which acts as a key here, if the interaction is important, a high wight will be computed which will be multiplied with the corresponding value
+
+Query is like the input vector corr to the current op (y3), which is matched against every other ip vector
+
+x1→x4 are the keys; the vector that the query is matched again 
+
+The values are the the vector in the weighted sum that ultimately provides the op, again x1 →x4
+
+NOTE: here for simple self attention for every op y3 we have a single query x3. This query matches against every word; isn't a single query too simplistic
+
+Some notes
+
+- every key matches the query to a certain extent as determined by the dot prod
+- A mixture of all values is returned
+- This is basically how the nw can learn associations bw diff parts of the text while generating each op
+- In self attention, keys, queries and values are all from the same set, i.e all derived from the ip embeddings and that is why we call it "self"; also a query at a time for y3 is x3 so again "self"
