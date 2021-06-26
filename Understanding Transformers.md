@@ -415,7 +415,7 @@ So for every op we have 6 wts here, we compute the weighted sum and this gives u
 
 The trick is that these weights (w_i,j) is NOT a model parameter but a derived value that we compute (learn) from the ip data
 
-Lets understand the basics of self-attention graphically first
+Lets understand the basics of self-attention graphically firstp
 
 1. We have a seq of 6 ips and 6 corresponding ops. For now we will look at the computation of y3
 
@@ -543,21 +543,38 @@ Some notes
 - every key matches the query to a certain extent as determined by the dot prod
 - A mixture of all values is returned
 - This is basically how the nw can learn associations bw diff parts of the text while generating each op
-- In self attention, keys, queries and values are all from the same set, i.e all derived from the ip embeddings and that is why we call it "self"; also a query at a time for y3 is x3 so again "self"
+- **In self attention, keys, queries and values are all from the same set, i.e all derived from the ip embeddings and that is why we call it "self"; also a query at a time for y3 is x3 so again "self"**
+
+![https://i.imgur.com/LBKQqUm.jpeg](https://i.imgur.com/LBKQqUm.jpeg)
+
+### More on Queries, Keys and Values
+
+Again consider the equation for determining y3:
+
+y3 = (x3 . x1). **x1** + (x3. x2) . **x2** +(x3. x3) . **x3** + (x3. x4) . **x4**
+
+`underline: query, regular: key, bold: value`
+
+Every input vector 𝐱i is used in three different ways in the self attention operation:
+
+1. It is compared to every other vector to establish the weights for its own output 𝐲i; so for obtaining the op corr to x3 i.e y3, x3 acts like a query and it is compared with every other input vector
+2. It is compared to every other vector to establish the weights for the output of the j-th vector 𝐲j
+
+    So imagine we are generating y3. Now a vector like x2 contributes in the term (x3. x2) . **x2** and if its significant, it will contribute to the overall op, so it is getting compared with every other vector, like a key and `key x query = wt`
+
+3. It is used as part of the weighted sum to compute each output vector once the weights have been established.
+
+These roles are often called the query, the key and the value (we'll explain where these names come from later). In the basic self-attention we've seen so far, each input vector must play all three roles. We make its life a little easier by deriving new vectors for each role, by applying a linear transformation to the original input vector.
 
 ### Modifications to self attention
 
 ### 1. Key, Query and Value Transformations
 
-![https://i.imgur.com/Nqynm9y.png](https://i.imgur.com/Nqynm9y.png)
+![https://i.imgur.com/NZMk9Wo.png](https://i.imgur.com/NZMk9Wo.png)
 
-Even though we are using the same query vector for querying all keys for generating the corresponding op, these can behave differently using these transformations. Basically in self attention the same input vectors serve as key, query and values. But using these transformations, they can behave differently when they take on each of these 3 roles 
+![https://i.imgur.com/T13Fdka.jpeg](https://i.imgur.com/T13Fdka.jpeg)
 
-We use linear transformations for these. 
-
-For every role (key, query and value) we use a separate weight matrix and bias. So now an input vector can behave differently as a key than as a value or as a query. This adds more diversity
-
-And using these matrices, bias and the input vectors we compute the key, query and values (k_i, q_i, v_i)
+![https://i.imgur.com/EDxMcVG.jpeg](https://i.imgur.com/EDxMcVG.jpeg)
 
 ### 2. Multi-head attention
 
