@@ -735,4 +735,64 @@ Now since we have diff context vectors for each time step of the decoder, we hav
 
 (blog_blob): prob of enc-dec → attn intuition → attn implementation → attn interpretation → [filler] proceed to building block of transformer → attn as a wt avg → self attn → K,Q,V intuition → multi head attn
 
+### Interpreting the attention wts
+
+![https://i.imgur.com/g45GW56.png](https://i.imgur.com/g45GW56.png)
+
+This is basically a heatmap depicting the wts computed for each input word while predicting each op word
+
+If we look at the 1st 4 words we see that only the diagonal elements are high which means that the one-to-one relationship is meaningful
+
+But then we come to the op words "zone economique europeene" and we can see the off-diagonal elements of the respective english words highlighted
+
+The model has figured out that the order is different for these words and this trend continues 
+
+So using these attention wts we can **explain** how the model is making these decisions
+
+And this is a very direct interpretation, we do not have to do any adversarial attacks/compute permutation importances. Basically no extra computation, we just get these attention wts out that we have to compute anyways and we get the added benefit of interpretatbility
+
+ 
+
+### Attention applied to other tasks
+
+Note that the input to attention mechanism is basically some input features and an initial hidden state. Then using the framework we compute a new op hidden state and so on...
+
+So we can very easily apply to any other task in which we have a grid of ip features and we want to produce a sequence of ops. We can apply it to other types of ip data which do not necessarily have to be sequences
+
+We apply it to an image captioning task:
+
+Imagine that we have a grid of feature vectors as the final op of the conv layer. These vectors represent the features at that particular spatial portion of the image, so h11 in the diag represents the features at the top left portion of the image We use the exact same attention mechanism to compute the attn wts, which represent how much attn to pay to each **spatial portion of the image** for generating each op. Each attn wt is a scalar which we store in another grid. Using these attn wts we compute a context vector as before (C1)
+
+![https://i.imgur.com/YfX5JDq.png](https://i.imgur.com/YfX5JDq.png)
+
+Similarly we use S1 to compute new attn wts and C2 to predict "sitting"
+
+![https://i.imgur.com/a3fi56H.png](https://i.imgur.com/a3fi56H.png)
+
+ and we continue ....
+
+![https://i.imgur.com/gN2l5hp.png](https://i.imgur.com/gN2l5hp.png)
+
+This is v similar to the seq→seq task as before
+
+Now again since the attn wts represents which parts of the image to pay attention to as we predict each op word, we can visualize them very easily
+
+![https://i.imgur.com/KsVmmte.png](https://i.imgur.com/KsVmmte.png)
+
+Here we have generated the op caption "A bird flying over a body of water"
+
+At every time step of generating these words we have visualized the attn wts
+
+Observe how the attn initially focuses on the bird and then focuses on the body of water!!
+
+Also note how the transition kind of happens near the word "over" when the model starts to see the lower pixels more, almost as if it were asking "over what??"
+
+In the lower row, we ask the model not to select a weighted recombination of all features, we ask the model to select exactly one feature in the input grid of features
+
+Some other examples:
+
+![https://i.imgur.com/QYexVSe.png](https://i.imgur.com/QYexVSe.png)
+
+**Anytime we want to convert one type of data into another type of data and we want to do it over time, we can use attention mechanism to cause the model to focus on diff parts of the ip while generating each part of the op - very general mechanism**
+
 [Reading the paper - some notes](https://www.notion.so/Reading-the-paper-some-notes-5d325d7101be4ff2b935596003e920a3)
