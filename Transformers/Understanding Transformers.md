@@ -16,6 +16,10 @@ Transformer: yannik + jay alamar
 
 [https://www.youtube.com/watch?v=ah7_mfl7LD0](https://www.youtube.com/watch?v=ah7_mfl7LD0)
 
+Positional embedding: [https://www.youtube.com/watch?v=dichIcUZfOw](https://www.youtube.com/watch?v=dichIcUZfOw)
+
+watch this: [https://www.youtube.com/watch?v=qYcy6h1Rkgg](https://www.youtube.com/watch?v=qYcy6h1Rkgg)
+
 ---
 
 Paper link: https://arxiv.org/pdf/1706.03762.pdf
@@ -256,7 +260,7 @@ Transformer Networks essentially use some Attention blocks and do away with RNNs
 
 ## Attention model Intuition
 
-Video by AndrewNG: https://www.youtube.com/watch?v=SysgYptB19
+Video by AndrewNG: [https://www.youtube.com/watch?v=SysgYptB19](https://www.youtube.com/watch?v=SysgYptB198)
 
 For encoder-decoder architectures of RNNs we have the following
 
@@ -370,6 +374,12 @@ NOTE : here probably all the activations for t' = 1... N are fed into the NN for
 
 It turns out that for practical purposes this works really well and the NN pays attention to the correct words of the input sentence
 
+### Consolidated diagram
+
+![https://i.imgur.com/Qd1eam7.jpeg](https://i.imgur.com/Qd1eam7.jpeg)
+
+![https://i.imgur.com/i0Mc9va.jpeg](https://i.imgur.com/i0Mc9va.jpeg)
+
 Complexity: If we have T_x words in input and T_y words in op then for each word T_y we have to compute attention for each of T_x words , so we will need to compute T_x x T_y attention parameters (quadratic costs). For machine translation, where the ip and op sentences are fairly short, this is acceptable
 
 Here we have mainly discussed a machine translation prob where the ip were word and op are also words. This has been applied to Image captioning tasks as well, we use a very similar architecture and ips are the pictures (pixels) and pay attention to only parts of picture at a time to generate the captions
@@ -381,6 +391,7 @@ This is an example machine translation tasks, and attention wts are computed bw 
 ## Transformers: Deep Learning @ VU
 
 Notes on the Deep Learning at VU University Amsterdam course: https://dlvu.github.io/
+Accompanying blog: http://peterbloem.nl/blog/transformers
 
 ## Part 1 : Self Attention
 
@@ -404,7 +415,7 @@ So for every op we have 6 wts here, we compute the weighted sum and this gives u
 
 The trick is that these weights (w_i,j) is NOT a model parameter but a derived value that we compute (learn) from the ip data
 
-Lets understand the basics of self-attention graphically first
+Lets understand the basics of self-attention graphically firstp
 
 1. We have a seq of 6 ips and 6 corresponding ops. For now we will look at the computation of y3
 
@@ -532,21 +543,38 @@ Some notes
 - every key matches the query to a certain extent as determined by the dot prod
 - A mixture of all values is returned
 - This is basically how the nw can learn associations bw diff parts of the text while generating each op
-- In self attention, keys, queries and values are all from the same set, i.e all derived from the ip embeddings and that is why we call it "self"; also a query at a time for y3 is x3 so again "self"
+- **In self attention, keys, queries and values are all from the same set, i.e all derived from the ip embeddings and that is why we call it "self"; also a query at a time for y3 is x3 so again "self"**
+
+![https://i.imgur.com/LBKQqUm.jpeg](https://i.imgur.com/LBKQqUm.jpeg)
+
+### More on Queries, Keys and Values
+
+Again consider the equation for determining y3:
+
+y3 = (x3 . x1). **x1** + (x3. x2) . **x2** +(x3. x3) . **x3** + (x3. x4) . **x4**
+
+`underline: query, regular: key, bold: value`
+
+Every input vector 𝐱i is used in three different ways in the self attention operation:
+
+1. It is compared to every other vector to establish the weights for its own output 𝐲i; so for obtaining the op corr to x3 i.e y3, x3 acts like a query and it is compared with every other input vector
+2. It is compared to every other vector to establish the weights for the output of the j-th vector 𝐲j
+
+    So imagine we are generating y3. Now a vector like x2 contributes in the term (x3. x2) . **x2** and if its significant, it will contribute to the overall op, so it is getting compared with every other vector, like a key and `key x query = wt`
+
+3. It is used as part of the weighted sum to compute each output vector once the weights have been established.
+
+These roles are often called the query, the key and the value (we'll explain where these names come from later). In the basic self-attention we've seen so far, each input vector must play all three roles. We make its life a little easier by deriving new vectors for each role, by applying a linear transformation to the original input vector.
 
 ### Modifications to self attention
 
 ### 1. Key, Query and Value Transformations
 
-![https://i.imgur.com/Nqynm9y.png](https://i.imgur.com/Nqynm9y.png)
+![https://i.imgur.com/NZMk9Wo.png](https://i.imgur.com/NZMk9Wo.png)
 
-Even though we are using the same query vector for querying all keys for generating the corresponding op, these can behave differently using these transformations. Basically in self attention the same input vectors serve as key, query and values. But using these transformations, they can behave differently when they take on each of these 3 roles 
+![https://i.imgur.com/T13Fdka.jpeg](https://i.imgur.com/T13Fdka.jpeg)
 
-We use linear transformations for these. 
-
-For every role (key, query and value) we use a separate weight matrix and bias. So now an input vector can behave differently as a key than as a value or as a query. This adds more diversity
-
-And using these matrices, bias and the input vectors we compute the key, query and values (k_i, q_i, v_i)
+![https://i.imgur.com/EDxMcVG.jpeg](https://i.imgur.com/EDxMcVG.jpeg)
 
 ### 2. Multi-head attention
 
@@ -576,3 +604,135 @@ Basically we split the self attention into diff heads
     ![https://i.imgur.com/HGTMOLh.png](https://i.imgur.com/HGTMOLh.png)
 
 ---
+
+# Attention paper explanation
+
+Credits: https://www.youtube.com/watch?v=qYcy6h1Rkgg
+
+At a very simple, high level we can think of attention as a form of **weighted average pooling**
+
+![https://i.imgur.com/SV0ek7X.png](https://i.imgur.com/SV0ek7X.png)
+
+w1, w2, w3 are like the attention paid to each input item
+
+**Self-attention: when the wts itself are the functions of the inputs** 
+
+The way of calculating attention varies across different papers
+
+![https://i.imgur.com/57ibx9f.jpeg](https://i.imgur.com/57ibx9f.jpeg)
+
+![https://i.imgur.com/PWaFTSw.jpeg](https://i.imgur.com/PWaFTSw.jpeg)
+
+### Attention - the math
+
+Credit: https://www.youtube.com/watch?v=ouLAC55VVOY&t=2319s
+
+**Attention as a hash table + multi headed attention**
+
+![https://i.imgur.com/7cilSKX.jpeg](https://i.imgur.com/7cilSKX.jpeg)
+
+**Representing it as equations**
+
+![https://i.imgur.com/KAhnQVq.jpeg](https://i.imgur.com/KAhnQVq.jpeg)
+
+![https://i.imgur.com/cov12GH.jpeg](https://i.imgur.com/cov12GH.jpeg)
+
+**Adding positional embeddings into the equation:**
+
+![https://i.imgur.com/StLCRdL.jpeg](https://i.imgur.com/StLCRdL.jpeg)
+
+![https://i.imgur.com/zBAxMgg.jpeg](https://i.imgur.com/zBAxMgg.jpeg)
+
+**Transformer (TODO)**
+
+![https://i.imgur.com/Y3yDqCv.jpeg](https://i.imgur.com/Y3yDqCv.jpeg)
+
+## Attention - Michigan Online
+
+Credits: https://www.youtube.com/watch?v=YAgjfMR9R_M
+
+Imagine a seq→seq task we are solving using RNNs 
+
+Here x values are the words in English and y values are the corresponding Spanish translations
+
+Note that the ip and op seq might be of different lengths (here T and T')
+
+In a seq→seq architecture, we have one RNN called the **Encoder,** which would receive the the x vectors  one at a time and produce this sequence of hidden states h_1 through h_t
+
+At every time step we would use this for current neural network formulation f_w that would receive the previous hidden state and the current input vector x and then produce the next hidden state
+
+So we use 1 RNN to process the whole seq of ip vectors
+
+![https://i.imgur.com/V2s8tMY.png](https://i.imgur.com/V2s8tMY.png)
+
+Once we finish processing the ip vectors we want to summarize the contents using 2 vectors here, Also we will be using another separate RNN as the decoder
+
+s_0 : initial hidden state of decoder RNN
+
+C: context vector; this will be fed at each time step to the decoder
+
+Some common practices is to set the context vector to the final hidden state (here h_4)
+
+and also to set the initial hidden state s_0 to 0
+
+The decoder at the first time step receives and input <START> token, prev hidden state and the context vector
+
+So the decoder op hidden state for the first time step s_1 is
+
+`s_1 = decoder(y_0, s_0, C)` 
+
+NOTE  in the diag below it says theat the decoder receives h_t-1 instead of s_t-1, which probably means that the decoder receives the prev hidden state from its own perspective, which is s_t-1
+
+In this way successively the op words are generated until a <STOP> token comes
+
+![https://i.imgur.com/fZs93K4.png](https://i.imgur.com/fZs93K4.png)
+
+### Some limitations
+
+The context vector serves the purpose of transferring info bw the encoder and decoder, so its supposed to somehow summarize all the info that the decoder **needs**  and what the encoder **sees**
+
+For long input sequences a vector C of limited length cannot contain that much info
+
+TODO: vanishing grad (blog_blob)
+
+**Idea: use new context vector at each step of the decoder**
+
+We achieve this by using something called Attention
+
+### Getting into Attention
+
+blog_blob
+
+The intuition is that suppose we are predicting the the 3rd hidden state from the decoder, so what are the things that might be important for it?
+
+1. Of course the previous op hidden state (s_t-1)
+2. Also each of the ip hidden states might be important to a certain degree
+
+Now whats this certain degree ? i.e. how much attention to give to each ip hidden state given the previous hidden state of the decoder - we simply let a NN figure that out!
+
+So we get a series of wts e31, e32, e33, e34 where e_3i = Fatt(s_2, h_i) for i = 1→4
+
+So we get a set of wts to apply to each hidden state and we can train this nw so that it learns **how much** attention to pay to what input and **when** (when is achievable as we are providing the prev hidden state as well to the NN) - so u can imagine that the NN can **potentially** learn the pattern, when I have seen "xyz" and there is "abc" in the ip I must attend to that
+
+In more technical terms if we look at the above eqn it means that each attn wt is how much does the model think that the hidden state h_i is necessary for predicting the word that comes after the hidden state s_2 (in terms of predicting s_3, the 3rd word)
+
+ Now that we have constructed a set of attention wts for each time step of the decoder, we can summarize that info and feed it in as a context vector at each time step of the decoder
+
+- we apply softmax on the attention wts to convert to a prob distribution
+- We take a wt sum of each hidden state (vector) with these attention wts to get a vector with dimenionality same as the hidden state of encoder
+- This gives the context vector for that predicting the particular time step of the decoder (in our above example its C3) Note: in the diag its C1 as we are considering predicting the first op word
+- Basically as we are predicting each word depending on the word predicted before, we can attend to diff parts of the ip differently
+
+![https://i.imgur.com/1ZX2e3t.png](https://i.imgur.com/1ZX2e3t.png)
+
+ This diagram shows for the first op word, for the second (to generate s_2) similarly we use s_1 and compute attention wts to get C2
+
+(blog_blob) Should we not also use s_0 while calculating C2 - well, s1 = decoder(y0, s0, C1) so the prev hidden states info is already kind of encoded in the immediately prev hidden state
+
+![https://i.imgur.com/NiyTOXY.png](https://i.imgur.com/NiyTOXY.png)
+
+Now since we have diff context vectors for each time step of the decoder, we have solved the problem of bottlenecking for long ip sequences
+
+(blog_blob): prob of enc-dec → attn intuition → attn implementation → attn interpretation → [filler] proceed to building block of transformer → attn as a wt avg → self attn → K,Q,V intuition → multi head attn
+
+[Reading the paper - some notes](https://www.notion.so/Reading-the-paper-some-notes-5d325d7101be4ff2b935596003e920a3)
