@@ -847,4 +847,18 @@ We have seen for a single query, let us now generalize for a set of input query 
 
 ![https://i.imgur.com/rKuz0OT.jpeg](https://i.imgur.com/rKuz0OT.jpeg)
 
+**Transformations to the input features**
+
+![https://i.imgur.com/4QA62hs.jpeg](https://i.imgur.com/4QA62hs.jpeg)
+
+![https://i.imgur.com/1YJGy1Q.jpeg](https://i.imgur.com/1YJGy1Q.jpeg)
+
+Calculating as before:
+
+![https://i.imgur.com/Dc7O2M2.jpeg](https://i.imgur.com/Dc7O2M2.jpeg)
+
+![https://i.imgur.com/4zKMRHC.jpeg](https://i.imgur.com/4zKMRHC.jpeg)
+
+![https://i.imgur.com/6IQePvg.jpeg](https://i.imgur.com/6IQePvg.jpeg)
+
 [Reading the paper - some notes](https://www.notion.so/Reading-the-paper-some-notes-5d325d7101be4ff2b935596003e920a3)
