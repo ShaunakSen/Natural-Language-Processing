@@ -30,6 +30,33 @@ Notes on the resources:
 - [https://www.youtube.com/watch?v=SMZQrJ_L1vo](https://www.youtube.com/watch?v=SMZQrJ_L1vo)
 - [http://jalammar.github.io/illustrated-transformer/](http://jalammar.github.io/illustrated-transformer/)
 
+## Prerequisites - Seq - to - seq architectures
+
+- [https://blog.keras.io/a-ten-minute-introduction-to-sequence-to-sequence-learning-in-keras.html](https://blog.keras.io/a-ten-minute-introduction-to-sequence-to-sequence-learning-in-keras.html)
+
+Sequence-to-sequence learning (Seq2Seq) is about training models to convert sequences from one domain (e.g. sentences in English) to sequences in another domain (e.g. the same sentences translated to French).
+
+`"the cat sat on the mat" -> [Seq2Seq model] -> "le chat etait assis sur le tapis"`
+
+This can be used for machine translation or for free-from question answering (generating a natural language answer given a natural language question) -- in general, it is applicable any time you need to generate text.
+
+There are multiple ways to handle this task, either using RNNs or using 1D convnets. Here we will focus on RNNs.
+
+**The trivial case: when input and output sequences have the same length**
+
+When both input sequences and output sequences have the same length, you can implement such models simply with a Keras LSTM or GRU layer (or stack thereof). This is the case in this example script that shows how to teach a RNN to learn to add numbers, encoded as character strings:
+
+![https://blog.keras.io/img/seq2seq/addition-rnn.png](https://blog.keras.io/img/seq2seq/addition-rnn.png)
+
+One caveat of this approach is that it assumes that it is possible to generate target[...t] given input[...t]. That works in some cases (e.g. adding strings of digits) but does not work for most use cases. **In the general case, information about the entire input sequence is necessary in order to start generating the target sequence.**
+
+**The general case: canonical sequence-to-sequence**
+
+In the general case, input sequences and output sequences have different lengths (e.g. machine translation) and the entire input sequence is required in order to start predicting the target. This requires a more advanced setup, which is what people commonly refer to when mentioning "sequence to sequence models" with no further context. Here's how it works:
+
+- A RNN layer (or stack thereof) acts as "encoder": it processes the input sequence and returns its own internal state. Note that we discard the outputs of the encoder RNN, only recovering the state. This state will serve as the "context", or "conditioning", of the decoder in the next step.
+- Another RNN layer (or stack thereof) acts as "decoder": it is trained to predict the next characters of the target sequence, given previous characters of the target sequence. Specifically, it is trained to turn the target sequences into the same sequences but offset by one timestep in the future, a training process called "teacher forcing" in this context. Importantly, the encoder uses as initial state the state vectors from the encoder, which is how the decoder obtains information about what it is supposed to generate. Effectively, the decoder learns to generate targets[t+1...] given targets[...t], conditioned on the input sequence.
+
 ## Transformers - what is the use?
 
 ![http://jalammar.github.io/images/t/the_transformer_3.png](http://jalammar.github.io/images/t/the_transformer_3.png)
@@ -522,11 +549,11 @@ y3 = (x3 . x1). **x1** + (x3. x2) . **x2** +(x3. x3) . **x3** + (x3. x4) . **x4*
 
 `underline: query, regular: key, bold: value`
 
-Now we basically consider x3 as the query, which is matched against the ips : x1 →x4
+Now we basically consider x3 as the query, which is matched against the ips (keys) : x1 →x4
 
 We can imagine like in the prev example that x3 is an encoding which encodes specific features, so if x3 is the encoding for the word "kingdom" it may contain feature info like ["male", "royalty", "people", "ruling", ...]. Imagine a query like 
 
-How important is the features set: ["male", "royalty", "people", "ruling", ...] interaction with every other input word important for predicting y3
+(blog_blob): How important is the features set: ["male", "royalty", "people", "ruling", ...] interaction with every other input word important for predicting y3
 
 Now when we use this query to compute the dot prod against say x1, which acts as a key here, if the interaction is important, a high wight will be computed which will be multiplied with the corresponding value
 
@@ -661,7 +688,7 @@ In a seq→seq architecture, we have one RNN called the **Encoder,** which would
 
 At every time step we would use this for current neural network formulation f_w that would receive the previous hidden state and the current input vector x and then produce the next hidden state
 
-So we use 1 RNN to process the whole seq of ip vectors
+So we use 1 RNN to process the whole seq of ip vectors. In the diagram we see an "unrolled" diagram meaning that the RNN is copied for each time step but its actually just 1 RNN which processes inputs sequentially
 
 ![https://i.imgur.com/V2s8tMY.png](https://i.imgur.com/V2s8tMY.png)
 
@@ -681,7 +708,7 @@ So the decoder op hidden state for the first time step s_1 is
 
 `s_1 = decoder(y_0, s_0, C)` 
 
-NOTE  in the diag below it says theat the decoder receives h_t-1 instead of s_t-1, which probably means that the decoder receives the prev hidden state from its own perspective, which is s_t-1
+NOTE  in the diag below it says that the decoder receives h_t-1 instead of s_t-1, which probably means that the decoder receives the prev hidden state from its own perspective, which is s_t-1
 
 In this way successively the op words are generated until a <STOP> token comes
 
@@ -707,8 +734,11 @@ The intuition is that suppose we are predicting the the 3rd hidden state from th
 
 1. Of course the previous op hidden state (s_t-1)
 2. Also each of the ip hidden states might be important to a certain degree
+- well , what is that degree - we can simply use some form of weighted average - [proceed to explain a simplified wt avg method as by namvo] - kind of like an intuitive explanation
 
-Now whats this certain degree ? i.e. how much attention to give to each ip hidden state given the previous hidden state of the decoder - we simply let a NN figure that out!
+Below we have the formalized working 
+
+Now what's this certain degree ? i.e. how much attention to give to each ip hidden state given the previous hidden state of the decoder - we simply let a NN figure that out!
 
 So we get a series of wts e31, e32, e33, e34 where e_3i = Fatt(s_2, h_i) for i = 1→4
 
@@ -794,5 +824,27 @@ Some other examples:
 ![https://i.imgur.com/QYexVSe.png](https://i.imgur.com/QYexVSe.png)
 
 **Anytime we want to convert one type of data into another type of data and we want to do it over time, we can use attention mechanism to cause the model to focus on diff parts of the ip while generating each part of the op - very general mechanism**
+
+### Developing the extensions of attention model
+
+Here we basically let a feed forward NN take in the prev hidden state and all the input features and let it assign all the attention wts
+
+This is way better than our prev seq → seq architecture but its still sequential, meaning that we have to compute the current hidden state before computing the next one
+
+![https://i.imgur.com/gk4tnJq.jpeg](https://i.imgur.com/gk4tnJq.jpeg)
+
+![https://i.imgur.com/6NVhwIc.jpeg](https://i.imgur.com/6NVhwIc.jpeg)
+
+![https://i.imgur.com/mRyNcoy.jpeg](https://i.imgur.com/mRyNcoy.jpeg)
+
+Here we have used the prev hidden state as query vectors, given I have seen "" what wts to get in order for me to get the next token
+
+We have seen for a single query, let us now generalize for a set of input query vectors. Note that we are now removing the seq aspect and assuming that we get all the query vectors as ip to the system simultanously
+
+![https://i.imgur.com/PytFZvi.jpeg](https://i.imgur.com/PytFZvi.jpeg)
+
+![https://i.imgur.com/RTCFQcW.jpeg](https://i.imgur.com/RTCFQcW.jpeg)
+
+![https://i.imgur.com/rKuz0OT.jpeg](https://i.imgur.com/rKuz0OT.jpeg)
 
 [Reading the paper - some notes](https://www.notion.so/Reading-the-paper-some-notes-5d325d7101be4ff2b935596003e920a3)
