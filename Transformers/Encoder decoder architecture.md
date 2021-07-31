@@ -101,3 +101,71 @@ In my paper “On the Properties of Neural Machine Translation: Encoder-Decoder 
 ![https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure1_BLEUscore_vs_sentencelength-624x459.png](https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure1_BLEUscore_vs_sentencelength-624x459.png)
 
 Due to its sequential nature, a recurrent neural network tends to remember recent symbols better. In other words, the further away an input symbol is from j, the less likely the RNN’s hidden state, remembers it perfectly.
+
+## Soft Attention Mechanism for Neural Machine Translation
+
+With this variable-length representation of a source sentence, the decoder now needs to be able to selectively focus on one or more of the context-dependent word representations, or the annotation vectors, for each target word. So, which annotation vector should the decoder focus on each time?
+
+Let’s imagine you’re translating the given source sentence, and you have written the first i-1 target words (y_1, y_2, ... , y_{i-1}) and are about to decide which target word you want to write as the i-th target word. In this case, how do you decide which source word(s) you will translate this time?
+
+A typical translator looks at each source word x_j (or its context-dependent representation h_j), considers it together with the already translated words (y_1, y_2, ..., y_{t-1}) and decides whether the source word x_j has been translated (equivalently, how (ir)relevant the source word x_j is for the next target word). It repeats this process for every word in the source sentence.
+
+![https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure3_attention_1.png](https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure3_attention_1.png)
+
+Figure 3. Attention Mechanism takes into consideration what has been translated and one of the source words.
+
+Dzmitry Bahdanau and I together with Yoshua Bengio last summer (2014) proposed to include a small neural network in a decoder to do almost exactly this. The small neural network, which we call the attention mechanism (purple-colored part in Figure 3), takes as input the previous decoder’s hidden state z_i (what has been translated) and one of the source context-dependent word representations h_j. The attention mechanism is implemented as a neural network with a single hidden layer and a single scalar output e_{j} , as in Figure 4. This is applied to every source word to get a set of weights that signify how important eah input word is to predict the next op word, given the previous set of op words already generated
+
+![https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure4_attention_2.png](https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure4_attention_2.png)
+
+Figure 4. Attention Mechanism returns a single scalar corresponding to a relevance score of the j-th source word.
+
+Once we’ve computed the relevance score of every source word, we want to make sure that they sum to one. This can be done easily using softmax normalization such that
+
+[https://s0.wp.com/latex.php?latex=%5Calpha_j+%3D+%5Cfrac%7B%5Cexp%28e_j%29%7D%7B%5Csum_%7Bj%27%7D+%5Cexp%28e_%7Bj%27%7D%29%7D.&bg=ffffff&fg=000&s=0&c=20201002](https://s0.wp.com/latex.php?latex=%5Calpha_j+%3D+%5Cfrac%7B%5Cexp%28e_j%29%7D%7B%5Csum_%7Bj%27%7D+%5Cexp%28e_%7Bj%27%7D%29%7D.&bg=ffffff&fg=000&s=0&c=20201002)
+
+Why do we want this kind of normalization? There can be many reasons, but my favourite reason is that this helps us interpret the scores assigned by the attention mechanism in a probabilistic framework. From this probabilistic perspective, one can think of the attention weight \alpha_j as the probability of the decoder selecting the j-th context-dependent source word representation out of all T source words. Then, we can compute the expected context-dependent word representation under this distribution (defined by the attention weights \alpha_j) using
+
+[https://s0.wp.com/latex.php?latex=c_i+%3D+%5Csum_%7Bj%3D1%7D%5ET+%5Calpha_j+h_j+%3D+%5Cmathbb%7BE%7D_%7B%5Calpha_j%27%7D+%5Cleft%5B+h_j+%5Cright%5D.&bg=ffffff&fg=000&s=0&c=20201002](https://s0.wp.com/latex.php?latex=c_i+%3D+%5Csum_%7Bj%3D1%7D%5ET+%5Calpha_j+h_j+%3D+%5Cmathbb%7BE%7D_%7B%5Calpha_j%27%7D+%5Cleft%5B+h_j+%5Cright%5D.&bg=ffffff&fg=000&s=0&c=20201002)
+
+This expected vector c_i summarizes the information about the **whole source sentence**, however, with **different emphasis on different locations/words of the source sentence**. Any annotation vector (context-dependent vector) deemed relevant (in other words, with high attention weight) by the attention mechanism will be better represented than those with low attention weights.
+
+![https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure5_attention_3.png](https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure5_attention_3.png)
+
+Figure 5. The relevance scores returned by the attention mechanism are normalized to sum to 1, which helps us interpret them as probabilities. From this probabilistic perspective, we compute the expectation of the annotation vectors under this distribution.
+
+Once this vector c_i is computed, everything happens as we discussed in the decoder section of the previous post, except that instead of h_T we use c_i at each time step i.
+
+### What does Soft Attention Mechanism Bring to the Table?
+
+Figure 6 shows an example of the kind of attention (or alignment) that the model learns without any supervision on the alignment.
+
+![https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure6_sample_translations1-624x282.png](https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure6_sample_translations1-624x282.png)
+
+Figure 6. Sample translations made by the neural machine translation model with the soft-attention mechanism. Edge thicknesses represent the attention weights found by the attention model.
+
+It’s pretty awesome that the model automatically found the correspondence structure between two languages. I’m sure you’ll appreciate it better if you speak either French or German (both of which I don’t)! But, the bigger question is, does the introduction of the attention mechanism improve translation performance?
+
+Yes, it does, and quite tremendously! Especially, in [Bahdandau et al., 2015], we observed that with the addition of the attention mechanism, the quality of the translation does not drop as sentence length increases, even when the size of the model stays roughly the same, as Figure 7 shows.
+
+![https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure7_RNNsearch-501-624x356.png](https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure7_RNNsearch-501-624x356.png)
+
+Figure 7. RNNsearch-50 is a neural machine translation model with the attention mechanism trained on all the sentence pairs of length at most 50.
+
+## Beyond translation: Image/Video Caption Generation
+
+The most surprising and important point of this whole neural machine translation business is that there’s nothing specific to languages. In particular, this approach can handle any type of input data as long as there’s a suitable neural architecture that returns either a fixed-size vector representation of the input or a set of annotation vectors of it.
+
+A recently published work from the University of Montreal and the University of Toronto showed that it is possible to design an attention-based encoder-decoder model which describes an image by replacing the encoder with a convolutional neural network, as Figure 8 shows. Similar approaches were proposed also in [Donahue et al., 2014; Fang et al., 2014; Karpathy and Li, 2014; Kiros et al., 2014; Mao et al., 2014].
+
+![https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure8_image_caption.png](https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure8_image_caption.png)
+
+Figure 8. Image Caption Generation with Attention Mechanism.
+
+Pushing the boundary further, Li et al. (2015) applied a similar attention-based approach to video description generation by letting the decoder utilize temporal structures of the video. Similarly, video description generation with the simple encoder-decoder architecture was proposed recently by [Li et al., 2015; Venugopalan et al., 2015] (See Figure 9).
+
+![https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure9_video_description-624x382.png](https://developer-blogs.nvidia.com/wp-content/uploads/2015/07/Figure9_video_description-624x382.png)
+
+Figure 9. Temporal attention for video description generation. From [Li et al., 2015].
+
+Furthermore, this same strategy of incorporating attention mechanism into learning to map from structured input to structured output has recently been applied to unimaginably many applications. One of my favorite is Vinyals et al. (2015)’s application to discrete optimization, where they use this attention-based neural network to (approximately) solve the travelling salesperson problem! For the up-to-date extensive list of these applications, please refer to my recent overview paper.
