@@ -301,3 +301,46 @@ To understand more concretely what this output vector looks like lets zoom into 
 - Here we have picked the term $\mathbf{a_{2\bullet}}\cdot \mathbf{h_{\bullet2}}$ and expanded it - as you can see its simply a weighted average of each of the input features (considering the second dimension).  Remember that the input features are stacked in a grid where the number of rows = number of input features and number of columns = number of dimensions in each input
 - Similarly $\mathbf{a_{2\bullet}}\cdot \mathbf{h_{\bullet1}}$ would be a weighted average of each of the input features along the first dimension and $\mathbf{a_{2\bullet}}\cdot \mathbf{h_{\bullet3}}$ will be the same for the 3rd dimension
 - Thus we are considering each input features to a certain extent
+
+## Abstraction 3: Generalizing for multiple query vectors
+
+We have abstracted the attention mechanism in a couple of ways so far:
+
+1. It can work on any type of input features (keys)
+2. We have replaced the neural network by the dot product between each key and the query vector to calculate the attention weights
+3. But still the query vectors are fed into the attention mechanism one at a time, in the above example we saw for the query vector $s_2$. We want to be able to input a matrix of query vectors and get the outputs out in a single time step.
+
+The process remains largely the same as the previous one, lets go over each step as before
+
+### Step 1 : Initializing the variables
+
+Assume we have $N_Q$ query vectors each of dimension $D_Q$ . So we essentially have a Query matrix of shape ($N_Q \times D_Q$). Here $N_Q = 2, D_Q = 3$. The input features matrix $X$ is same as before
+
+![https://i.imgur.com/ddMOeZD.png](https://i.imgur.com/ddMOeZD.png)
+
+### Step 2: Computing the raw Attention weights
+
+![https://i.imgur.com/Njp6D8X.png](https://i.imgur.com/Njp6D8X.png)
+
+1. The equations are same as we saw before, $\boldsymbol{E} = \boldsymbol{Q}\cdot \mathbf{X^{T}}$ allows us to compute the attention weights for each query vector w.r.t each key in one single operation
+2. The interpretation of each raw attention weight $e_{xy}$ is same as we saw before. The only difference is that $\boldsymbol{E}$ is a matrix instead of a vector as we are calculating for multiple query vectors
+
+### Step 3: Normalizing the raw Attention weights
+
+$\boldsymbol{E}$ is the attention weight matrix. Each row of $\boldsymbol{E}$ contains $N_X$ raw un-normalized weights, each weight corresponding to an input feature. There are $N_Q$ such rows in $\boldsymbol{E}$
+
+Now, for a particular query, each input feature gets assigned a weight and these weights need to be normalized, so we should apply the SoftMax operation on $\boldsymbol{E}$ along each row
+
+![https://i.imgur.com/WVQ3gW0.png](https://i.imgur.com/WVQ3gW0.png)
+
+### Step 4: Computing the output matrix
+
+![https://i.imgur.com/PfaAv8X.png](https://i.imgur.com/PfaAv8X.png)
+
+In this step we compute the output matrix. We will also call this the value matrix. 
+
+The computation is same as before and we get 2 rows as we had 2 queries. For each row we have 3 dimensions (this is the number of dimensions in each query)
+
+As before by zooming into one of the terms of the output we can see that each output value element is essentially nothing but a weighted average and that it considers a specific dimension of each of the 4 input features (in this case the second dimension)
+
+Notice how the equations all remain the same, by simply stacking the query vectors as a matrix we can ensure that we can compute all values simultaneously.
