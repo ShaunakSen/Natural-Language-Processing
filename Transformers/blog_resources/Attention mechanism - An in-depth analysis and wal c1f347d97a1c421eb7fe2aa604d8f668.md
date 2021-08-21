@@ -206,4 +206,98 @@ We have understood the math behind attention mechanism and hopefully you can now
 
 Note that in the animation I have not shown the normalization process for the attention scores for sake of simplicity. 
 
+Another thing worthwhile to note is that the main output of the attention mechanism is the context vector CT which is fed to the decoder at every time step. The decoder network is exactly the same as before. You can choose any architecture for the decoders as long as it can take in the context vector at each time step. So from the next part we will only focus on the output of the attention mechanism and not particularly on the decoder part as that part can change based on what task we are solving for.
+
 We have understood how attention works and why it is needed. We have used a neural network to learn the function $f_{att}$, which is a perfectly reasonable approach but we will see in the next post how we can simplify and generalize this. Also note that we have abstracted the process so that $[h_1, h_2, ..., h_8]$ are in no way constrained to be outputs of an RNN or even textual features - they are simply input features. However we are expected to provide a sequence of vectors $s_0 \rightarrow s_1 \rightarrow ... \rightarrow s_7$, one by one and get the attention weights for that time step. So we cant quite parallelize this process yet - we will see how we can re-frame the architecture to solve for this in the next post. In the next post we will work our way through a set of abstractions at the end of which you can simply imagine **attention** as a  **mechanism**  to simply throw in whenever you have some input features and want to generate outputs in a sequence.
+
+# Part 2
+
+We loosely mentioned some ideas in the last part by which we can abstract some parts of the Attention mechanism and make it more generalizable. In this part we will go over a series of abstractions step by step and also understand the math with examples to build attention as a tool which we can use to attend over any set of input features when we are generating a sequence of outputs.
+
+The flow for this part is hugely inspired from the [] and I have heavily borrowed from the explanations, do watch this lecture series!
+
+## Abstraction 1: The input features
+
+The input features do not need to be sequential, like the output from an encoder RNN like we saw in the previous post, we can have a set of input features and choose to attend over these features.
+
+Lets apply this abstraction to a new task of image captioning . The main motive here is to show you how we can apply attention over an arbitrary set of input features
+
+The task of image captioning is to take an image as input and produce a caption for the image
+
+![https://i.imgur.com/WTo5xmU.png](https://i.imgur.com/WTo5xmU.png)
+
+We will still be using an encoder-decoder based architecture for this problem, but this time the encoder will be a CNN network (typically a stack of CNN, FF NN ) which will take in the image pixels and compute a feature set - a feature set output from a CNN network is a grid of features in the form of a feature map. If you are aware of how CNNs work, then this should be familiar to you. Otherwise simply imagine that the output of the CNN is a grid of numerical values that encode spatial features about the image. At a very high level you can imagine that the CNN has detected specific objects in the image as shown in the diagram below and the numerical values in the highlighted locations correspond to those objects.
+
+ 
+
+![https://i.imgur.com/EAL39js.png](https://i.imgur.com/EAL39js.png)
+
+So the output of this CNN network is basically a grid of feature values that encode some useful information about the image that helps the network generate the corresponding captions. Here I have assumed that these features correspond to the objects in the image.
+
+Notice how this is very similar to the previous task in which encoder **RNN** detected a **set** of features about an input **sentence**. Here we have an encoder **CNN** detect a **grid** of features about an input **image.**
+
+We had a **set** of attention wts for the set of input features, similarly here we will build a **grid** of attention wts for the grid of input features.
+
+[CNN attention.mp4](Attention%20mechanism%20-%20An%20in-depth%20analysis%20and%20wal%20c1f347d97a1c421eb7fe2aa604d8f668/CNN_attention.mp4)
+
+Here we have shown for a single context vector $c_t$ which will be fed to the decoder. But they key here is that at each time step this context vector is calculated by attending over different *locations* of the image, so you can imagine that when the model needs to output the word "frisbee" we can the weights highlighted in image [] around the frisbee will be high.
+
+///// interpretation
+
+## Abstraction 2: The Neural Network for computing attention - replace with a simple dot product
+
+![https://i.imgur.com/5iQeov8.png](https://i.imgur.com/5iQeov8.png)
+
+We have mentioned previously that the function $f_{att}$ which computes the attention weights, taking as inputs the hidden state vector and the input features is learned by a feed forward neural network.  What does this neural network do? It takes in the previous hidden state and the input features and computes a set of wts that determine how closely the input features interact with the previous hidden state in order to predict the output - so a loose assumption we can make here is that this NN is like a similarity function bw the previous hidden state and the input features - I know that this seems like an oversimplification but for now just understand that essentially what the NN is doing is figuring out how closely aligned (similar) each input feature is to the hidden state to predict the op.
+
+We have already see how a dot product is an excellent measure of similarity between 2 vectors - so lets try and replace this NN by a simple dot product - this will help reduce computation significantly as we do not need to train the NN to predict each attention weight!
+
+The next sections will be a bit math-heavy but we will walk through an example time step to show how exactly these calculations are made. 
+
+Some notation conventions used:
+
+$$\textup{UPPERCASE } \mathbf{ bold} : \textbf{X} \rightarrow matrix \\\textup{lowercase } \mathbf{ bold} : \textbf{s} \rightarrow vector \\\textup{lowercase } regular : a \rightarrow scalar$$
+
+### Step 1 : Initializing the variables
+
+![https://i.imgur.com/4LCXc0a.png](https://i.imgur.com/4LCXc0a.png)
+
+- Assume we are currently on time step $t=2$, so we have the hidden state $s_2$.                            $s_{xy} : \textup{At time step x, the yth dimension of hidden state/query vector}$
+- Assume that the hidden state has a dimensionality of 3 ($D_Q$)
+- We assume we have the input features in a grid of shape: $N_X \times D_Q$ (Here 4x3). This means that we have 4 input features, each of dimensionality 3.                                                               $h_{xy} : \textup{The yth dimension of xth input feature}$
+- We want to find: for this hidden state $s_2$, what are the weights we should assign to the input features in order to predict the output. So the hidden state is like a query, which is to be applied over the keys, which are the input features.
+
+The task here is to understand how the vector $s_2$ interacts with each input feature. In terms of query and keys, we are trying to understand that *given a hidden state vector (query) how does it interact with each of the input features (keys)* - this is the basic motivation for the **QKV** architecture which is used in Transformers (attn is all u need link)
+
+### Step 2: Computing the raw Attention weights
+
+![https://i.imgur.com/J9kRKBk.png](https://i.imgur.com/J9kRKBk.png)
+
+- Previously as you can see in animation [] we had computed each attention weight using the function $f_{att}$. Now as we are using the dot product, we can simply compute $\boldsymbol{E} = \boldsymbol{s_2}\cdot \mathbf{X^{T}} \\$and get the set of attention weights in a single operation
+- $\boldsymbol{E}$ is the set of attention weights over each input feature
+- Also note that we have used a new notation $\mathbf{a_{x\bullet}}$ . This is simply a cleaner way to write vectors. What it means is that keeping the first dimension of $\mathbf{a}$ fixed we expand along the second dimension (the dimension where the $\bullet$ is present). Just for clarity, $\mathbf{s_{2\bullet}}\cdot \mathbf{h_{1\bullet}} = s_{21}.h_{11} + s_{22}.h_{12} + s_{23}.h_{13}$. I could have avoided this notation, but if you look at explanations in this field where matrix-vector or  matrix-matrix multiplications are used, then this notation is often used.
+
+### Step 3: Normalizing the raw Attention weights
+
+![https://i.imgur.com/I6QVtBZ.png](https://i.imgur.com/I6QVtBZ.png)
+
+This is a self-explanatory step in which we simply apply the SoftMax operation to convert the raw attention weights to a probability distribution. Note that we now have a set of 4 weights that tells us that in a scale of 1-100 what percentage of attention we should provide to each input feature, given this current query vector - hopefully you can see how interpretable and intuitive this is!
+
+//// scaled dot product? 36:00 of video?
+
+### Step 4: Computing the output vector
+
+![https://i.imgur.com/1kAkeAw.png](https://i.imgur.com/1kAkeAw.png)
+
+- The output vector $o$ is defined as $\boldsymbol{o} = \boldsymbol{A}\cdot \boldsymbol{X}$
+- The shape of this vector is same as the previous query vector - we can use this vector as the context vector to be fed into the decoder
+
+To understand more concretely what this output vector looks like lets zoom into one of the terms:
+
+ 
+
+![https://i.imgur.com/gJU3NFh.png](https://i.imgur.com/gJU3NFh.png)
+
+- Here we have picked the term $\mathbf{a_{2\bullet}}\cdot \mathbf{h_{\bullet2}}$ and expanded it - as you can see its simply a weighted average of each of the input features (considering the second dimension).  Remember that the input features are stacked in a grid where the number of rows = number of input features and number of columns = number of dimensions in each input
+- Similarly $\mathbf{a_{2\bullet}}\cdot \mathbf{h_{\bullet1}}$ would be a weighted average of each of the input features along the first dimension and $\mathbf{a_{2\bullet}}\cdot \mathbf{h_{\bullet3}}$ will be the same for the 3rd dimension
+- Thus we are considering each input features to a certain extent
