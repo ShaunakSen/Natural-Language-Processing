@@ -1,8 +1,27 @@
 # Attention mechanism - An in-depth analysis and walkthrough - Part 1
 
-//// introduction - explain motivation of studying attention + how we are going to cover it in each part
+- [ ]  Interpretation text
+- [ ]  References
+- [ ]  Figure captions
+- [ ]  missing parts
+- [ ]  animations check
+- [x]  introduction
 
-Often concepts in deep learning are not quite interpretable, but we will see this is not the case with the Attention mechanism and we will logically build towards the full architecture
+In this tutorial you will learn about Attention mechanism which is a technique that is the backbone of the Transformers Neural Network architecture. Transformers are the state-of-the-art when it comes to natural language processing tasks like machine translation, code autocompletion, Named Entity Recognition, summarization etc. It can even be used for computer vision tasks. As you will see throughout this 2-part tutorial, we will build attention from the ground-up - first we will understand why it was needed, then build a working, but specific version of the model at the end of this part. Then in the second part we will work our way through a set of abstractions that help us generalize attention as a building block that we can insert in almost any neural network framework. 
+
+After completing the first part you will learn about:
+
+1. The basic working of encoder-decoder architecture
+2. The limitations of this architecture
+3. The purpose of building attention model and its intuition
+4. Implementation and working of the attention model as a tool to improve the encoder-decoder architecture
+
+Also before starting, I want to emphasize that while I have tried my best to provide context to each of the concepts covered here, there are quite a few pre-requisites to completing this tutotial:
+
+1. Understand how neural networks work and how they are trained 
+2. A basic working of Recurrent Neural Networks and Convolution Neural Networks
+
+Often concepts in deep learning are not quite interpretable, but we will see this is not the case with the Attention mechanism and we will logically build towards the full architecture that is used in Transformers.
 
 ## A quick overview of the Encoder-Decoder architecture
 
@@ -140,6 +159,8 @@ Drop in performance of seq→seq architectures with increased sentence length Cr
 
 The BLEU score is simply a metric that compares how good an output text from the model is close to the true reference text. It does so by matching N-grams and the higher the score the better. You can read more on this here: [https://machinelearningmastery.com/calculate-bleu-score-for-text-python/](https://machinelearningmastery.com/calculate-bleu-score-for-text-python/)
 
+In traditional arch, the context is same for every time step and only the prv hidden state is diff. Say the NN got the first op wrong.. then the entire error kind of propagates and since the context is same at each step, the NN has no way to correct
+
 ## Building towards Attention
 
 We have spent a lot of time understanding how sequence to sequence models work but this is a topic on Attention mechanism. The need for understanding sequence to sequence models is because attention was first introduced to solve the main limitation of this architecture and understanding this will help us get an intuitive sense of how it solves the problem.
@@ -159,7 +180,7 @@ The encoder computes hidden states $h_1, h_2, ..., h_8$. Instead of discarding a
 Thus the context vector that will be passed to the decoder at time step t should be influenced by:
 
 1. The previous hidden state of the decoder 
-2. The hidden states of the encoder $h_1, h_2, ..., h_8$ - these are information about the input features
+    1. The hidden states of the encoder $h_1, h_2, ..., h_8$ - these are information about the input features
 
  
 
@@ -344,3 +365,61 @@ The computation is same as before and we get 2 rows as we had 2 queries. For eac
 As before by zooming into one of the terms of the output we can see that each output value element is essentially nothing but a weighted average and that it considers a specific dimension of each of the 4 input features (in this case the second dimension)
 
 Notice how the equations all remain the same, by simply stacking the query vectors as a matrix we can ensure that we can compute all values simultaneously.
+
+## Abstraction 4: Adding non-linearity and creating QKV Attention
+
+Whenever we use attention mechanism we will have to define what our Queries, Keys and Values are and how will they be constructed. At the end of this abstraction, you will have a great idea about how to build this and how this is used in Transformers. But let us first understand why this is even required.
+
+In the previous section, when we expanded out a term in the Value/Output matrix $\mathbf{a_{1\bullet}}\cdot \mathbf{h_{\bullet2}}$ we saw that its essentially a weighted average taking into account the 2nd dimension of each of the input features - while this is powerful and allows us to attend over the input features, its essentially a linear system. Also we have replaced the function $f_{att}$ which was learned by a neural network by dot products which are again linear. So we need some mechanism to incorporate non-linearity into attention.
+
+Also notice that we have used the input features matrix, i.e. the Keys in 2 different ways:
+
+1. In Step 2 for calculating the raw attention weights as in $\boldsymbol{E} = \boldsymbol{Q}\cdot \mathbf{X^{T}}$
+2. In Step 4 for calculating the output/value matrix as in $\boldsymbol{Y} = \boldsymbol{A}\cdot \mathbf{X}$
+
+So basically the same matrix is used for 2 purposes - to determine which input features are important and also to return the actual output. These 2 are very different tasks - one for matching and one to actually return the matched output. 
+
+Imagine you are building a sequence predictor system and your system actually is a code-completion tool. So it takes as input an input text or comment and also the pixels on the screen and should return the next few autocompleted lines of code
+
+Imagine you have asked the program to render a ball on the screen and it has written the code for you and displayed the ball. Now assume you give it the command - "Move it to the right by 100 px". If you have built attention into your system, you can expect this query to have assign a strong weight to the input features or keys that correspond to the "ball" object. But the value that we want to return is something like `ball.x_position += 100`, and not the features corresponding to the ball object. So the value that we want is an entirely different mapping of the input features. Essentially in this case: 
+
+```bash
+Query : the docstring 
+Keys : i/p features that match that query
+Value: code to do stuff specified in the docstring
+```
+
+The solution is to simply use a transformation for getting the key matrix ($\boldsymbol{K}$) and the value matrix ($\boldsymbol{V}$) from the input features matrix ($\boldsymbol{X}$). What transformation to use is simply learned by a neural network. So we learn the mapping from the input features to the Keys and Values.
+
+[QKV-1.mp4](Attention%20mechanism%20-%20An%20in-depth%20analysis%20and%20wal%20c1f347d97a1c421eb7fe2aa604d8f668/QKV-1.mp4)
+
+Lets understand this process with the help of this animation
+
+1. We define the following inputs:
+    1. Query matrix $\mathbf{Q}$ of shape $N_Q \times D_Q$
+    2. $D_V$: the number of output dimensions we want
+    3. Input features matrix $\mathbf{X}$ of shape $N_X \times D_X$
+2. We build a neural network with $D_X$ inputs and $D_Q$ outputs which is trained to learn $D_X \times D_Q$ weights
+3. We use these weights in form of a matrix $\mathbf{W_K}$ of shape $D_X \times D_Q$ to transform matrix  $\mathbf{X}$ as:
+
+    $\mathbf{K} = \mathbf{X}\cdot\mathbf{W_K}$ where shape of  $\mathbf{K}$ is $N_X \times D_Q$ - this is the same dimensionality as the input feature matrix considered in the previous examples.
+
+We have obtained the Key matrix by learning a transformation from the input features. Since we are using a neural network to learn this, we can use a non-linear activation function like ReLU or sigmoid, so this brings an aspect of non-linearity in the system as well
+
+Similarly we learn the Value matrix as shown below:
+
+[QKV-2.mp4](Attention%20mechanism%20-%20An%20in-depth%20analysis%20and%20wal%20c1f347d97a1c421eb7fe2aa604d8f668/QKV-2.mp4)
+
+1. The inputs are same as before
+2. We build a neural network with $D_X$ inputs and $D_V$ outputs which is trained to learn $D_X \times D_V$ weights
+3. We use these weights in form of a matrix $\mathbf{W_V}$ of shape $D_X \times D_V$ to transform matrix  $\mathbf{X}$ as:
+
+    $\mathbf{V} = \mathbf{X}\cdot\mathbf{W_V}$ where shape of  $\mathbf{V}$ is $N_X \times D_V$
+
+In this way we have successfully mapped out our input features into 2 transformations for Keys and Values. Now the rest of the operations remain the same - we just use the Key matrix $\mathbf{K}$ to compute the attention weights and use the Value matrix $\mathbf{V}$ to compute the output.
+
+![QKV-final.svg](Attention%20mechanism%20-%20An%20in-depth%20analysis%20and%20wal%20c1f347d97a1c421eb7fe2aa604d8f668/QKV-final.svg)
+
+The steps are exactly same as we have done before, but we just use the newly built Keys and Value matrices to compute the attention weights and the final output matrix respectively
+
+This brings us to the end of this topic - we started from a form of attention that worked but was very specific and complex to a particular task as in [] and built it up step by step in the form of these abstractions to generalize to the QKV form of attention that can be plugged into any transformer based model
