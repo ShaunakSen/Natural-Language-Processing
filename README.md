@@ -2,6 +2,8 @@
 
 ---
 
+
+> hello from mac
 This repo contains various resources related to NLP and its applications
 
 ## Contents
