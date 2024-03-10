@@ -1,0 +1,15 @@
+instructions:
+- type: general
+  content: /
+    Below is a conversation between a personal shopping assistant and
+    a user.
+models:
+  - type: main
+    engine: azure
+    model: gpt-4
+    parameters:
+      openai_api_version: '2023-03-15-preview'
+      azure_endpoint: ""
+      deployment_name: gpt-4-turbo-0125
+      api_key: ""
+      temperature: 0
