@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "langraph-projects"
+version = "0.1.0"
+description = ""
+authors = ["Shaunak Sen <shaunak1105@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+langchain = "^0.3.0"
+langchain-community = "^0.3.0"
+pandas = "^2.2.3"
+ipython = "^8.27.0"
+langchain-openai = "^0.2.0"
+ipykernel = "^6.29.5"
+langchain-groq = "^0.2.0"
+langgraph = "^0.2.24"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
