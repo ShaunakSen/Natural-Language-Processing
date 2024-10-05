@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "natural-language-processing"
+version = "0.1.0"
+description = ""
+authors = ["Shaunak Sen <shaunak1105@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+langchain-groq = "0.2.0"
+langchain = "0.3.2"
+langchain-core = "0.3.9"
+groq = "^0.11.0"
+langchain-openai = "^0.2.2"
+numpy = "1.26.4"
+pandas = "^2.2.3"
+seaborn = "^0.13.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
